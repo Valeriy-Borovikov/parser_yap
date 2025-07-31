@@ -7,7 +7,7 @@ import requests_cache
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
-from parser_yap.configs import configure_argument_parser, configure_logging
+from configs import configure_argument_parser, configure_logging
 from constants import MAIN_DOC_URL
 from outputs import control_output
 from utils import find_tag, get_response

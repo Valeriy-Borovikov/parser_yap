@@ -1,0 +1,14 @@
+# виртуальное окружение
+.venv/
+
+# Python-кэш
+__pycache__/
+*.py[cod]
+
+# результаты работы парсера
+downloads/
+results/
+logs/
+
+# кеш requests-cache
+http_cache.sqlite

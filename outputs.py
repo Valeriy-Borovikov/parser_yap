@@ -1,7 +1,7 @@
-# outputs.py
 import csv
 import datetime as dt
 import logging
+from pathlib import Path
 
 from prettytable import PrettyTable
 
@@ -18,10 +18,12 @@ def control_output(results, cli_args):
     else:
         default_output(results)
 
+
 # Вывод данных в терминал построчно.
 def default_output(results):
     for row in results:
-        print(*row)    
+        print(*row)
+
 
 # Вывод данных в формате PrettyTable.
 def pretty_output(results):
@@ -31,22 +33,17 @@ def pretty_output(results):
     table.add_rows(results[1:])
     print(table)
 
-# Создание директории с результатами парсинга. 
+
+# Создание директории и сохранение результатов парсинга в CSV-файл.
 def file_output(results, cli_args):
-    results_dir = BASE_DIR / 'results'
+    results_dir: Path = BASE_DIR / 'results'
     results_dir.mkdir(exist_ok=True)
-    parser_mode = cli_args.mode
-    now = dt.datetime.now()
-    now_formatted = now.strftime(DATETIME_FORMAT)
-    file_name = f'{parser_mode}_{now_formatted}.csv'
-    file_path = results_dir / file_name
-    # Отсюда начинается новый код.
-    # Через контекстный менеджер открываем файл по сформированному ранее пути 
-    # в режиме записи 'w', в нужной кодировке utf-8.
+
+    now_str = dt.datetime.now().strftime(DATETIME_FORMAT)
+    file_path = results_dir / f'{cli_args.mode}_{now_str}.csv'
+
     with open(file_path, 'w', encoding='utf-8') as f:
-        # Создаём «объект записи» writer.
         writer = csv.writer(f, dialect='unix')
-        # Передаём в метод writerows список с результатами парсинга.
-        writer.writerows(results) 
-    
-    logging.info(f'Файл с результатами был сохранён: {file_path}')
+        writer.writerows(results)
+
+    logging.info('Файл с результатами был сохранён: %s', file_path)

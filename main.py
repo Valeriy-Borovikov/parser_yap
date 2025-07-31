@@ -1,4 +1,3 @@
-# main.py
 import logging
 import re
 from pathlib import Path
@@ -9,34 +8,30 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
-from constants import BASE_DIR, MAIN_DOC_URL
+from constants import MAIN_DOC_URL
 from outputs import control_output
-
 from utils import find_tag, get_response
 
 
 def whats_new(session):
     # Вместо константы WHATS_NEW_URL, используйте переменную whats_new_url.
     whats_new_url = urljoin(MAIN_DOC_URL, 'whatsnew/')
-    # Загрузка веб‑страницы с кешированием через вспомогательную функцию.
+    # Загрузка веб-страницы с кешированием через вспомогательную функцию.
     response = get_response(session, whats_new_url)
     if response is None:
-        # Если основная страница не загрузится, программа завершит работу функции.
         return
     # Создание «супа».
     soup = BeautifulSoup(response.text, features='lxml')
 
-    # Шаг 1‑й: поиск в «супе» тега section с нужным id. Парсеру нужен только
-    # первый элемент, поэтому используется функция find_tag().
     main_div = find_tag(soup, 'section', attrs={'id': 'what-s-new-in-python'})
 
-    # Шаг 2‑й: поиск внутри main_div следующего тега div с классом toctree-wrapper.
-    # Здесь тоже нужен только первый элемент, используется функция find_tag().
     div_with_ul = find_tag(main_div, 'div', attrs={'class': 'toctree-wrapper'})
 
-    # Шаг 3‑й: поиск внутри div_with_ul всех элементов списка li с классом toctree-l1.
     # Нужны все теги, поэтому используется метод find_all().
-    sections_by_python = div_with_ul.find_all('li', attrs={'class': 'toctree-l1'})
+    sections_by_python = div_with_ul.find_all(
+        'li',
+        attrs={'class': 'toctree-l1'},
+    )
 
     results = [('Ссылка на документацию', 'Версия', 'Статус')]
     for section in tqdm(sections_by_python):
@@ -52,9 +47,7 @@ def whats_new(session):
         h1 = find_tag(soup, 'h1')
         dl = find_tag(soup, 'dl')
         dl_text = dl.text.replace('\n', ' ')
-        results.append(
-            (version_link, h1.text, dl_text)
-        )
+        results.append((version_link, h1.text, dl_text))
 
     return results
 
@@ -75,29 +68,17 @@ def latest_versions(session):
     else:
         raise Exception('Не найден список c версиями Python')
 
-    # Инициализация списка для хранения результатов.
     results = [('Ссылка на документацию', 'Версия', 'Статус')]
     pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
-    # Цикл для перебора тегов <a>, полученных ранее.
     for a_tag in a_tags:
-        # Извлечение ссылки.
         link = a_tag['href']
-        # Поиск паттерна в ссылке.
         text_match = re.search(pattern, a_tag.text)
         if text_match is not None:
-            # Если строка соответствует паттерну,
-            # переменным присваивается содержимое групп, начиная с первой.
             version, status = text_match.groups()
         else:
-            # Если строка не соответствует паттерну,
-            # первой переменной присваивается весь текст, второй — пустая строка.
             version, status = a_tag.text, ''
-        # Добавление полученных переменных в список в виде кортежа.
-        results.append(
-            (link, version, status)
-        )
+        results.append((link, version, status))
 
-    # Печать результата.
     return results
 
 
@@ -105,37 +86,30 @@ def download(session):
     # Вместо константы DOWNLOADS_URL, используйте переменную downloads_url.
     downloads_url = urljoin(MAIN_DOC_URL, 'download.html')
 
-    # 1. Получаем страницу.
     response = get_response(session, downloads_url)
     if response is None:
         return
     response.raise_for_status()
 
-    # 2. «Суп».
     soup = BeautifulSoup(response.text, 'lxml')
 
-    # 3. Таблица с архивами.
     main_tag = find_tag(soup, 'div', attrs={'role': 'main'})
     table_tag = find_tag(main_tag, 'table', attrs={'class': 'docutils'})
 
-    # 4. Ссылка на PDF A4 ZIP.
     pdf_a4_tag = find_tag(
         table_tag,
         'a',
-        attrs={'href': re.compile(r'.+pdf-a4\.zip$')}
+        attrs={'href': re.compile(r'.+pdf-a4\.zip$')},
     )
 
-    # 5. Абсолютный URL архива.
     archive_url = urljoin(downloads_url, pdf_a4_tag['href'])
 
-    # 6. Имя файла и каталог загрузок.
     filename = archive_url.split('/')[-1]
     base_dir = Path(__file__).parent
     downloads_dir = base_dir / 'downloads'
     downloads_dir.mkdir(exist_ok=True)
     archive_path = downloads_dir / filename
 
-    # 7. Скачиваем архив.
     print(f'Скачиваю {archive_url} → {archive_path} …')
     resp = session.get(archive_url)
     resp.raise_for_status()
@@ -143,9 +117,8 @@ def download(session):
     with open(archive_path, 'wb') as file:
         file.write(resp.content)
 
-    # 8. Готово!
     print('Документация успешно загружена!')
-    logging.info(f'Архив был загружен и сохранён: {archive_path}')
+    logging.info('Архив был загружен и сохранён: %s', archive_path)
 
 
 def pep(session):
@@ -157,11 +130,10 @@ def pep(session):
 
     soup = BeautifulSoup(response.text, 'lxml')
 
-    # 2. Блок со всеми PEP (в новой вёрстке таблицы нет).
     numerated_peps = find_tag(soup, 'section', attrs={'id': 'numerical-index'})
-    # Берём все ссылки на pep-xxxx/, оставляем только те, где текст — цифры (номер).
     pep_links = [
-        a for a in numerated_peps.find_all('a', href=re.compile(r'pep-\d{4}/'))
+        a
+        for a in numerated_peps.find_all('a', href=re.compile(r'pep-\d{4}/'))
         if a.text.isdigit()
     ]
 
@@ -176,29 +148,25 @@ def pep(session):
         '': ('Draft', 'Active'),
     }
 
-
     status_counter = {}
     mismatches = []
 
     for link_tag in tqdm(pep_links):
-        # PEP 0 пропускаем сразу.
         if link_tag.text.strip() == '0':
             continue
 
         row_tr = link_tag.find_parent('tr')
         abbr_tag = row_tr.find('abbr')
 
-        if abbr_tag:                         # например «SD», «WF», «IA» …
+        if abbr_tag:
             abbr = abbr_tag.text.strip()
             preview_status = abbr[1] if len(abbr) == 2 else ''
-        else:                                # страховка — колонка не найдена
+        else:
             preview_status = ''
-        # ----------------------------------------------------------------
 
         root_url = 'https://peps.python.org/'
         link = urljoin(root_url, link_tag['href'])
 
-        # 3. Скачиваем карточку PEP и вытягиваем реальный статус.
         card_response = get_response(session, link)
         if card_response is None:
             continue
@@ -211,34 +179,35 @@ def pep(session):
                 break
         if status_tag is None:
             continue
-        actual_status = status_tag.find_next_sibling(['dd', 'td']).get_text(strip=True)
+        actual_status = (
+            status_tag.find_next_sibling(['dd', 'td']).get_text(strip=True)
+        )
 
-        # 4. Сравниваем со списком ожидаемых.
         if actual_status not in EXPECTED_STATUS.get(preview_status, ()):
             mismatches.append(
-                (link, actual_status, EXPECTED_STATUS.get(preview_status))
+                (link, actual_status, EXPECTED_STATUS.get(preview_status)),
             )
 
-        # 5. Считаем частоту.
-        status_counter[actual_status] = status_counter.get(actual_status, 0) + 1
+        status_counter[actual_status] = (
+            status_counter.get(actual_status, 0) + 1
+        )
 
-    # 6. Логируем расхождения, если есть.
     if mismatches:
         logging.info('Несовпадающие статусы:')
         for url, real, expected in mismatches:
             logging.info(
-                f'{url}\nСтатус в карточке: {real}\nОжидаемые статусы: {expected}'
+                '%s\nСтатус в карточке: %s\nОжидаемые статусы: %s',
+                url,
+                real,
+                expected,
             )
 
-    # 7. Формируем результат для вывода/CSV.
     results = [('Статус', 'Количество')]
     for status, count in sorted(status_counter.items()):
         results.append((status, count))
-    total = sum(status_counter.values())
-    results.append(('Total', total))
+    results.append(('Total', sum(status_counter.values())))
 
     return results
-
 
 
 MODE_TO_FUNCTION = {
@@ -250,15 +219,12 @@ MODE_TO_FUNCTION = {
 
 
 def main():
-    # Запускаем функцию с конфигурацией логов.
     configure_logging()
-    # Отмечаем в логах момент запуска программы.
     logging.info('Парсер запущен!')
 
     arg_parser = configure_argument_parser(MODE_TO_FUNCTION.keys())
     args = arg_parser.parse_args()
-    # Логируем переданные аргументы командной строки.
-    logging.info(f'Аргументы командной строки: {args}')
+    logging.info('Аргументы командной строки: %s', args)
 
     session = requests_cache.CachedSession()
     if args.clear_cache:
@@ -269,7 +235,6 @@ def main():
 
     if results is not None:
         control_output(results, args)
-    # Логируем завершение работы парсера.
     logging.info('Парсер завершил работу.')
 
 
